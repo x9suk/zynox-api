@@ -23,20 +23,30 @@ const CATEGORIES = [
     ],
   },
   {
-    name: '🔑 Developer',
+    name: '👤 Account',
     cmds: [
-      '`/api-usage` — Your daily API usage & limits',
-      '`/api-keys` — Active key count & recent keys',
-      '`/webhook-test` — Test webhook delivery',
+      '`/api-create` — Create developer account & API key',
+      '`/api-my-status` — View your account status',
+      '`/api-usage` — Today\'s usage, limits, rate limit',
+    ],
+  },
+  {
+    name: '🔑 Keys',
+    cmds: [
+      '`/api-my-keys` — List your API keys (metadata only)',
+      '`/api-regenerate` — Regenerate a key (DM gets new key)',
+      '`/api-revoke` — Revoke an API key',
+      '`/api-webhook` — Configure webhooks for your keys',
     ],
   },
   {
     name: '📚 Info & Links',
     cmds: [
-      '`/api-docs` — API docs, dashboard, GitHub',
+      '`/api-dashboard` — DM dashboard, docs & invite links',
+      '`/api-docs` — API docs, quick-start, GitHub',
       '`/api-invite` — Bot invite with scopes',
       '`/invite` — Original bot invite link',
-      '`/api-help` — Legacy command list',
+      '`/api-help` — All API management commands',
     ],
   },
   {
