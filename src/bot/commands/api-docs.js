@@ -36,7 +36,7 @@ async function apiDocsCommand(interaction) {
     new ButtonBuilder()
       .setLabel('GitHub')
       .setStyle(ButtonStyle.Link)
-      .setURL('https://github.com/anomalyco/LofiLink'),
+      .setURL('https://github.com/x9suk/zynox-api'),
   );
 
   await interaction.reply({ embeds: [embed], components: [row] });
