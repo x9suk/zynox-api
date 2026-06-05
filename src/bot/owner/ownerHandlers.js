@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const { EmbedBuilder } = require('discord.js');
 const { getRedis } = require('../../config/redis');
 const config = require('../../config/env');
+const logger = require('../../utils/logger');
 const Developer = require('../../models/Developer');
 const ApiKey = require('../../models/ApiKey');
 const OwnerAuditLog = require('../../models/OwnerAuditLog');
@@ -337,8 +338,23 @@ async function handleLogs(ctx) {
 }
 
 async function handleReload(ctx) {
-  await ctx.reply({ content: 'Command registry reload is not available in this environment. Restart the bot to pick up new commands.', ephemeral: true });
-  await audit(ctx.user.id, 'reload');
+  await ctx.reply({ content: 'Reloading slash commands…', ephemeral: true });
+
+  try {
+    const { deployCommands, commands } = require('../commands/deploy');
+    const result = await deployCommands();
+    const count = Array.isArray(result) ? result.length : 0;
+    const embed = new EmbedBuilder()
+      .setColor(0xF1C40F)
+      .setTitle('Slash Commands Reloaded')
+      .setDescription(`${count} slash commands registered successfully.`)
+      .setTimestamp();
+    await ctx.editReply({ embeds: [embed], components: [] }).catch(() => {});
+    await audit(ctx.user.id, 'reload', { reason: `registered ${count} commands` });
+  } catch (err) {
+    logger.error({ err }, 'Failed to reload commands');
+    await ctx.editReply({ content: 'Failed to reload commands. Check logs.', ephemeral: true }).catch(() => {});
+  }
 }
 
 module.exports = {
