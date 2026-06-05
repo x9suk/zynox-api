@@ -35,6 +35,11 @@ async function apiCreateCommand(interaction) {
   }
 
   const name = interaction.options.getString('name');
+  if (!name) {
+    await interaction.reply({ content: 'Usage: `!api-create <name> [plan] [scopes]`\ne.g. `!api-create mykey free users:read,bot:read`', ephemeral: true });
+    return;
+  }
+
   const plan = interaction.options.getString('plan') || 'free';
   const scopesStr = interaction.options.getString('scopes') || 'users:read,bot:read';
   const scopes = scopesStr.split(',').map(s => s.trim()).filter(Boolean);
