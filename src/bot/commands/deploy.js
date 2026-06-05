@@ -96,6 +96,43 @@ const commands = [
     description: 'Show your active API key count and recent keys',
   },
   {
+    name: 'api-create',
+    description: 'Create or update your developer account and generate an API key',
+    options: [
+      { name: 'name', description: 'A name for your API key', type: 3, required: true },
+      { name: 'plan', description: 'Select a plan (free only for self-signup)', type: 3, required: false, choices: [
+        { name: 'Free', value: 'free' },
+        { name: 'Pro', value: 'pro' },
+        { name: 'Enterprise', value: 'enterprise' },
+      ]},
+      { name: 'scopes', description: 'Comma-separated scopes: users:read,presence:read,bot:read,guilds:read', type: 3, required: false },
+    ],
+  },
+  {
+    name: 'api-dashboard',
+    description: 'Get dashboard, docs, and invite links via DM',
+  },
+  {
+    name: 'api-my-status',
+    description: 'View your developer account plan, role, keys, and usage',
+  },
+  {
+    name: 'api-my-keys',
+    description: 'List your API keys with metadata (prefix, scopes, status)',
+  },
+  {
+    name: 'api-regenerate',
+    description: 'Regenerate an API key — new key sent via DM',
+  },
+  {
+    name: 'api-revoke',
+    description: 'Revoke an API key permanently',
+  },
+  {
+    name: 'api-webhook',
+    description: 'Configure webhook URL for an API key',
+  },
+  {
     name: 'webhook-test',
     description: 'Send a test webhook to your configured webhook URLs',
   },

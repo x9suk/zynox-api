@@ -13,6 +13,13 @@ const apiBotCommand = require('../commands/api-bot');
 const apiUsageCommand = require('../commands/api-usage');
 const apiTimelineCommand = require('../commands/api-timeline');
 const apiKeysCommand = require('../commands/api-keys');
+const apiCreateCommand = require('../commands/api-create');
+const apiDashboardCommand = require('../commands/api-dashboard');
+const apiMyStatusCommand = require('../commands/api-my-status');
+const apiMyKeysCommand = require('../commands/api-my-keys');
+const apiRegenerateCommand = require('../commands/api-regenerate');
+const apiRevokeCommand = require('../commands/api-revoke');
+const apiWebhookCommand = require('../commands/api-webhook');
 const webhookTestCommand = require('../commands/webhook-test');
 const adminStatsCommand = require('../commands/admin-stats');
 const adminPlanCommand = require('../commands/admin-plan');
@@ -52,6 +59,13 @@ const commandMap = {
   'api-usage': apiUsageCommand,
   'api-timeline': apiTimelineCommand,
   'api-keys': apiKeysCommand,
+  'api-create': apiCreateCommand,
+  'api-dashboard': apiDashboardCommand,
+  'api-my-status': apiMyStatusCommand,
+  'api-my-keys': apiMyKeysCommand,
+  'api-regenerate': apiRegenerateCommand,
+  'api-revoke': apiRevokeCommand,
+  'api-webhook': apiWebhookCommand,
   'webhook-test': webhookTestCommand,
   'admin-stats': adminStatsCommand,
   'admin-plan': adminPlanCommand,

@@ -96,7 +96,9 @@ function createShimInteraction(message, commandName, args) {
       getString: (name) => {
         const posMap = {
           id: 0, user: 0, target: 0,
+          name: 0,
           plan: 1, reason: 1, limit: 1,
+          scopes: 2, key_id: 0, url: 1,
         };
         const idx = posMap[name];
         if (idx === undefined || idx >= args.length) return null;
@@ -105,7 +107,9 @@ function createShimInteraction(message, commandName, args) {
       getInteger: (name) => {
         const posMap = {
           id: 0, user: 0, target: 0,
+          name: 0,
           plan: 1, reason: 1, limit: 1,
+          scopes: 2, key_id: 0, url: 1,
         };
         const idx = posMap[name];
         if (idx === undefined || idx >= args.length) return null;
@@ -115,7 +119,9 @@ function createShimInteraction(message, commandName, args) {
       getUser: (name) => {
         const posMap = {
           id: 0, user: 0, target: 0,
+          name: 0,
           plan: 1, reason: 1, limit: 1,
+          scopes: 2, key_id: 0, url: 1,
         };
         const idx = posMap[name];
         if (idx === undefined || idx >= args.length) return null;
