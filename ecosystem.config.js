@@ -1,0 +1,28 @@
+module.exports = {
+  apps: [{
+    name: 'zynox-api',
+    script: 'src/server.js',
+    cwd: '/opt/zynox-tracking-api',
+    instances: 1,
+    exec_mode: 'fork',
+    env: {
+      NODE_ENV: 'production',
+    },
+    env_file: './.env',
+    max_memory_restart: '512M',
+    error_file: './logs/error.log',
+    out_file: './logs/out.log',
+    log_file: './logs/combined.log',
+    merge_logs: true,
+    log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+    max_restarts: 10,
+    restart_delay: 5000,
+    min_uptime: 10000,
+    listen_timeout: 10000,
+    kill_timeout: 15000,
+    shutdown_with_message: true,
+    watch: false,
+    autorestart: true,
+    cron_restart: '0 3 * * *',
+  }],
+};

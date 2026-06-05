@@ -1,0 +1,883 @@
+openapi: 3.0.3
+info:
+  title: Zynox Tracking API
+  description: Discord Live Tracking API — track users, bots, guilds, and presence in real time via the Discord Gateway.
+  version: 2.0.0
+  contact:
+    url: https://api.zynoxbot.online
+servers:
+  - url: https://api.zynoxbot.online/api/v1
+    description: Production server
+  - url: http://localhost:3000/api/v1
+    description: Local development
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: API key for public endpoints
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for developer dashboard and admin
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Missing x-api-key header"
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+        cached:
+          type: boolean
+        source:
+          type: string
+          enum: [redis, mongodb]
+        timestamp:
+          type: string
+          format: date-time
+
+    BatchRequest:
+      type: object
+      required: [ids]
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+            pattern: '^\d{17,20}$'
+          minItems: 1
+          maxItems: 100
+          description: Array of Discord snowflake IDs
+
+    UserData:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        globalName:
+          type: string
+        avatar:
+          type: string
+        banner:
+          type: string
+        bannerColor:
+          type: string
+        accentColor:
+          type: number
+        bot:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        lastSeen:
+          type: string
+          format: date-time
+
+    PresenceData:
+      type: object
+      properties:
+        userId:
+          type: string
+        guildId:
+          type: string
+        status:
+          type: string
+          enum: [online, idle, dnd, offline]
+        activities:
+          type: array
+          items:
+            type: object
+        clientStatus:
+          type: object
+        afk:
+          type: boolean
+        lastUpdated:
+          type: string
+          format: date-time
+
+    BotStatsData:
+      type: object
+      properties:
+        botId:
+          type: string
+        uptime:
+          type: number
+        ping:
+          type: number
+        guildCount:
+          type: number
+        userCount:
+          type: number
+        memberCount:
+          type: number
+        channelCount:
+          type: number
+        commandCount:
+          type: number
+        voiceConnections:
+          type: number
+        memoryUsage:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
+
+    GuildStatsData:
+      type: object
+      properties:
+        guildId:
+          type: string
+        guildName:
+          type: string
+        memberCount:
+          type: number
+        botCount:
+          type: number
+        humanCount:
+          type: number
+        channelCount:
+          type: number
+        roleCount:
+          type: number
+        voiceConnections:
+          type: number
+        onlineCount:
+          type: number
+        idleCount:
+          type: number
+        dndCount:
+          type: number
+        offlineCount:
+          type: number
+        timestamp:
+          type: string
+          format: date-time
+
+    BotHealth:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [connected, reconnecting, disconnected]
+        uptime:
+          type: number
+        reconnectAttempts:
+          type: number
+        lastDisconnect:
+          type: string
+          nullable: true
+        unstable:
+          type: boolean
+
+    PlanLimits:
+      type: object
+      properties:
+        free:
+          type: object
+          properties:
+            dailyLimit: { type: number, example: 100 }
+            maxKeys: { type: number, example: 5 }
+            rateLimitPerMinute: { type: number, example: 10 }
+        pro:
+          type: object
+          properties:
+            dailyLimit: { type: number, example: 10000 }
+            maxKeys: { type: number, example: 25 }
+            rateLimitPerMinute: { type: number, example: 60 }
+        enterprise:
+          type: object
+          properties:
+            dailyLimit: { type: number, example: 100000 }
+            maxKeys: { type: number, example: 100 }
+            rateLimitPerMinute: { type: number, example: 300 }
+
+  parameters:
+    DiscordId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^\d{17,20}$'
+      description: Discord snowflake ID (17-20 digits)
+    KeyId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: API key ObjectId
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: number
+        default: 50
+        maximum: 200
+      description: Results limit
+
+paths:
+  # ─── Health ──────────────────────────────────────────────
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      responses:
+        "200":
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  uptime:
+                    type: number
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /health/ready:
+    get:
+      tags: [Health]
+      summary: Readiness check (database + redis)
+      responses:
+        "200":
+          description: All services ready
+        "503":
+          description: One or more services not ready
+
+  /health/bot:
+    get:
+      tags: [Health]
+      summary: Bot health status
+      responses:
+        "200":
+          description: Bot health information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BotHealth'
+
+  # ─── Auth ────────────────────────────────────────────────
+  /auth/discord/login:
+    get:
+      tags: [Auth]
+      summary: Redirect to Discord OAuth2 login
+      responses:
+        "302":
+          description: Redirect to Discord
+
+  /auth/discord/callback:
+    get:
+      tags: [Auth]
+      summary: Discord OAuth2 callback
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Login successful, returns JWT
+        "401":
+          description: OAuth2 failed
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh JWT token
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: New JWT token
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Logged out
+
+  # ─── Developer ────────────────────────────────────────────
+  /developer/me:
+    get:
+      tags: [Developer]
+      summary: Get developer profile
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Developer profile
+
+    patch:
+      tags: [Developer]
+      summary: Update developer profile
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Profile updated
+
+  /developer/usage:
+    get:
+      tags: [Developer]
+      summary: Get daily usage statistics
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Usage data
+
+  # ─── Analytics ────────────────────────────────────────────
+  /developer/analytics:
+    get:
+      tags: [Analytics]
+      summary: Get analytics overview
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Analytics overview
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  totalKeys:
+                    type: number
+                  activeKeys:
+                    type: number
+                  totalRequests:
+                    type: number
+                  requestsToday:
+                    type: number
+                  plan:
+                    type: string
+
+  /developer/analytics/export:
+    get:
+      tags: [Analytics]
+      summary: Export usage data
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, csv]
+            default: json
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [today, 7d, 30d]
+            default: today
+      responses:
+        "200":
+          description: Exported data
+          content:
+            application/json:
+              schema:
+                type: object
+            text/csv:
+              schema:
+                type: string
+
+  # ─── API Keys ────────────────────────────────────────────
+  /developer/keys:
+    get:
+      tags: [API Keys]
+      summary: List API keys
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Array of API keys (hashes excluded)
+
+    post:
+      tags: [API Keys]
+      summary: Create API key
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, scopes]
+              properties:
+                name:
+                  type: string
+                  maxLength: 100
+                scopes:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - users:read
+                      - presence:read
+                      - bot:read
+                      - guilds:read
+                      - '*'
+                webhookUrl:
+                  type: string
+                  format: uri
+                webhookSecret:
+                  type: string
+                expiresAt:
+                  type: string
+                  format: date-time
+      responses:
+        "201":
+          description: Key created (raw key shown once)
+
+  /developer/keys/{id}:
+    get:
+      tags: [API Keys]
+      summary: Get API key details
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/KeyId'
+      responses:
+        "200":
+          description: Key details
+
+    patch:
+      tags: [API Keys]
+      summary: Update API key
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/KeyId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                isActive:
+                  type: boolean
+                webhookUrl:
+                  type: string
+                webhookSecret:
+                  type: string
+                expiresAt:
+                  type: string
+      responses:
+        "200":
+          description: Key updated
+
+    delete:
+      tags: [API Keys]
+      summary: Revoke API key
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/KeyId'
+      responses:
+        "200":
+          description: Key revoked
+
+  /developer/keys/{id}/regenerate:
+    post:
+      tags: [API Keys]
+      summary: Regenerate API key (old key revoked)
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/KeyId'
+      responses:
+        "200":
+          description: New key generated (shown once)
+
+  /developer/keys/{id}/rotate:
+    post:
+      tags: [API Keys]
+      summary: Extend key expiration
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/KeyId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                days:
+                  type: number
+                  default: 30
+      responses:
+        "200":
+          description: Key expiry extended
+
+  /developer/keys/{id}/test-webhook:
+    post:
+      tags: [API Keys]
+      summary: Send test webhook
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/KeyId'
+      responses:
+        "200":
+          description: Test webhook sent
+        "400":
+          description: No webhook URL configured
+
+  # ─── Public API ──────────────────────────────────────────
+  /public/users/{id}:
+    get:
+      tags: [Public API]
+      summary: Get user profile
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DiscordId'
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/UserData'
+
+  /public/users/{id}/presence:
+    get:
+      tags: [Public API]
+      summary: Get user presence
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DiscordId'
+      responses:
+        "200":
+          description: Presence data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/PresenceData'
+
+  /public/users/{id}/timeline:
+    get:
+      tags: [Public API]
+      summary: Get presence history timeline
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DiscordId'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          description: Array of historical presence records
+        "404":
+          description: No presence history found
+
+  /public/bots/{id}/stats:
+    get:
+      tags: [Public API]
+      summary: Get bot statistics
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DiscordId'
+      responses:
+        "200":
+          description: Bot stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/BotStatsData'
+
+  /public/guilds/{id}/stats:
+    get:
+      tags: [Public API]
+      summary: Get guild statistics
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DiscordId'
+      responses:
+        "200":
+          description: Guild stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/GuildStatsData'
+
+  # ─── Batch ───────────────────────────────────────────────
+  /public/users/batch:
+    post:
+      tags: [Batch]
+      summary: Get multiple users
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchRequest'
+      responses:
+        "200":
+          description: Array of user objects (null for not found)
+        "400":
+          description: Invalid input
+
+  /public/bots/batch:
+    post:
+      tags: [Batch]
+      summary: Get multiple bots
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchRequest'
+      responses:
+        "200":
+          description: Array of bot stats
+        "400":
+          description: Invalid input
+
+  /public/guilds/batch:
+    post:
+      tags: [Batch]
+      summary: Get multiple guilds
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchRequest'
+      responses:
+        "200":
+          description: Array of guild stats
+        "400":
+          description: Invalid input
+
+  # ─── Stripe ──────────────────────────────────────────────
+  /stripe/create-checkout:
+    post:
+      tags: [Billing]
+      summary: Create Stripe checkout session
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plan, successUrl, cancelUrl]
+              properties:
+                plan:
+                  type: string
+                  enum: [pro, enterprise]
+                successUrl:
+                  type: string
+                  format: uri
+                cancelUrl:
+                  type: string
+                  format: uri
+      responses:
+        "200":
+          description: Checkout URL
+
+  /stripe/webhook:
+    post:
+      tags: [Billing]
+      summary: Stripe webhook (server-to-server)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Webhook processed
+
+  # ─── Admin ───────────────────────────────────────────────
+  /admin/stats:
+    get:
+      tags: [Admin]
+      summary: Get admin stats
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Platform statistics
+
+  /admin/developers:
+    get:
+      tags: [Admin]
+      summary: List developers (paginated, filterable)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: number
+        - name: limit
+          in: query
+          schema:
+            type: number
+        - name: plan
+          in: query
+          schema:
+            type: string
+        - name: isBanned
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Paginated developer list
+
+  /admin/developers/{id}:
+    get:
+      tags: [Admin]
+      summary: Get developer details with keys
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/KeyId'
+      responses:
+        "200":
+          description: Developer details
+        "404":
+          description: Developer not found
+
+  /admin/developers/{id}/ban:
+    post:
+      tags: [Admin]
+      summary: Ban developer and revoke keys
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/KeyId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+      responses:
+        "200":
+          description: Developer banned
+
+  /admin/developers/{id}/unban:
+    post:
+      tags: [Admin]
+      summary: Unban developer
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/KeyId'
+      responses:
+        "200":
+          description: Developer unbanned
+
+  /admin/developers/{id}/plan:
+    patch:
+      tags: [Admin]
+      summary: Change developer plan
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/KeyId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plan]
+              properties:
+                plan:
+                  type: string
+                  enum: [free, pro, enterprise]
+      responses:
+        "200":
+          description: Plan changed
+        "400":
+          description: Invalid plan
